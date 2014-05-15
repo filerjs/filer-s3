@@ -3,66 +3,38 @@ var should = require("should"),
     S3;
 
 describe("Filer.FileSystem.providers.S3", function () {
-
-  it("should finish the initialization",function() {
-    should(function() {
-      S3 = new S3Provider({bucket:"<bucket_name>", key: "<S3_KEY>", secret: "<S3_SECRET>"});
-    }).not.throw();
+  it("Check if S3 isSuppoeted", function (){
+    if(!S3Provider.isSupported) {
+      should.fail("Skipping Filer.FileSystem.providers.S3 tests, since S3 isn't supported.");
+      return;
+    }
   });
 
-  it("should allow put()", function (done) {
-    S3.put("/tmp/file.js", {
-        id: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",
-        mode: "file",
-        size: 0,
-        data: "<p>hello world</p>"
-      }, function(err, data) {
-      should.not.exist(err);
-      done();
-    });
+  it("has open, getReadOnlyContext, and getReadWriteContext instance methods", function() {
+    S3 = new S3Provider({name: "aali", keyPrefix: "thisonefornow"});
+    S3.open.should.be.type('function');
+    S3.getReadOnlyContext.should.be.type('function');
+    S3.getReadWriteContext.should.be.type('function');
   });
 
-  it("should allow put()", function (done) {
-    var data = new Uint8Array(5);
-    S3.put("/tmp/path/to/file.txt", data, function(err, data) {
-      should.not.exist(err);
-      done();
-    });
-  });
+  it("should allow put() and get()", function(done) {
+    var data = new Uint8Array([5, 2, 5]);
+    provider = new S3Provider({name: "aali", keyPrefix: "thisonefornow"});
+    provider.open({bucket:"<name>", key: "<key>", secret: "<secret>"}, function(error, firstAccess) {
+      if(error) throw error;
 
-  it("should allow put()", function (done) {
-    var data = new Uint8Array(5);
-    S3.put("/tmp/path/to/file.md", data, function(err, data) {
-      should.not.exist(err);
-      done();
-    });
-  });
+      var context = provider.getReadWriteContext();
+      context.put("key", data, function(error, result) {
+        if(error) {
+          throw error;
+        }
 
-  it("should allow put()", function (done) {
-    S3.put("/tmp/data.js", {"0":17,"1":0,"2":0,"3":0,"4":0}, function(err, data) {
-      should.not.exist(err);
-      done();
-    });
-  });
-
-  it("should allow get()", function (done) {
-    S3.get("file.txt", function(err, data) {
-      should.exist(err);
-      done();
-    });
-  });
-
-  it("should allow delete()", function (done) {
-    S3.delete("/tmp/foo.bar", function(err, data) {
-      should.not.exist(err);
-      done();
-    });
-  });
-
-  it("should allow clear()", function (done) {
-    S3.clear(function(err, data) {
-      should.not.exist(err);
-      done();
+        context.get("key", function(error, result) {
+          should.not.exist(error);
+          result.should.eql(data);
+          done();
+        });
+      });
     });
   });
 

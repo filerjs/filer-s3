@@ -1,18 +1,23 @@
-var util = require("./util");
-var S3;
+var util = require("./lib/utils");
+var knox = require("knox");
+var s3;
 
 function S3Context(options) {
   this.readOnly = options.isReadOnly;
   this.keyPrefix = options.keyPrefix;
-};
+}
+
+function prefixKey(prefix, key) {
+  return prefix + "/" + key;
+}
 
 S3Context.prototype.put = function (key, value, callback) {
   if(this.readOnly) {
-    return callback("Error: Write operation on readOnly context.")
+    return callback("Error: Write operation on readOnly context.");
   }
-  key = this.keyPrefix + "/" + key;
+  key = prefixKey(this.keyPrefix, key);
   // We do extra work to make sure typed arrays survive
-  // being stored in the db and still get the right prototype later.
+  // being stored in S3 and still get the right prototype later.
   if (Object.prototype.toString.call(value) === "[object Uint8Array]") {
     value = {
       __isUint8Array: true,
@@ -23,17 +28,18 @@ S3Context.prototype.put = function (key, value, callback) {
   var headers = {
     'x-amz-acl': 'public-read',
     'Content-Length': Buffer.byteLength(value),
+    'application/type': 'application/json'
   };
 
   function onError() {
     callback("Error " + res.statusCode);
   }
 
-  S3.put(key, headers)
+  s3.put(key, headers)
     .on("error", onError)
     .on("response", function (res) {
       if (res.statusCode !== 200) {
-        return onError;
+        onError();
       }
       callback(null);
     })
@@ -41,26 +47,29 @@ S3Context.prototype.put = function (key, value, callback) {
 };
 
 S3Context.prototype.delete = function (key, callback) {
-  key = this.keyPrefix + "/" + key;
   if(this.readOnly) {
-    return callback("Error: Write operation on readOnly context.")
+    return callback("Error: Write operation on readOnly context.");
   }
-  S3.del(key).on('response', function (res) {
-    return callback(null);
+  key = prefixKey(this.keyPrefix, key);
+  s3.del(key).on('response', function (res) {
+    if(res.statusCode === 403) {
+      return callback("Error: 403. Permission denied");
+    }
+    callback(null);
   }).end();
 };
 
 S3Context.prototype.clear = function (callback) {
   if(this.readOnly) {
-    return callback("Error: Write operation on readOnly context.")
+    return callback("Error: Write operation on readOnly context.");
   }
   var options = {
-    prefix: ""
+    prefix: this.keyPrefix
   };
   getAllObjects(options, callback, []);
 
   function getAllObjects(options, callback, aggregate) {
-    S3.list(options, function (err, data) {
+    s3.list(options, function (err, data) {
       aggregate = aggregate.concat(data.Contents.map(function (content) {
         return content.Key;
       }));
@@ -68,7 +77,10 @@ S3Context.prototype.clear = function (callback) {
         options.marker = data.Contents[data.Contents.length - 1].Key;
         getAllObjects(options, callback, aggregate);
       }
-      S3.deleteMultiple(aggregate, function (err, res) {
+      s3.deleteMultiple(aggregate, function (err, res) {
+        if(res.statusCode === 403) {
+          return callback("Error 403: Permission deined." + err);
+        }
         return callback(null);
       });
     });
@@ -77,11 +89,11 @@ S3Context.prototype.clear = function (callback) {
 };
 
 S3Context.prototype.get = function (key, callback) {
-  key = this.keyPrefix + "/" + key;
-  S3.get(key).on('response', function (res) {
+  key = prefixKey(this.keyPrefix, key);
+  s3.get(key).on('response', function (res) {
     if (res.statusCode === 404) {
       return callback("Error " + res.statusCode);
-    };
+    }
     var chunks = [];
     res.on('data', function (chunk) {
       chunks.push(chunk);
@@ -97,7 +109,7 @@ S3Context.prototype.get = function (key, callback) {
         }
         callback(null, value);
       } catch(e) {
-        callback(e);
+        return callback(e);
       }
     });
   }).end();
@@ -118,20 +130,21 @@ S3Provider.prototype.open = function(options, callback) {
     return;
   }
   try {
-    S3 = require("knox").createClient({
+    s3 = knox.createClient({
       bucket: options.bucket,
       key: options.key,
       secret: options.secret
     });
-    S3.list({ prefix: this.keyPrefix, maxKeys: 1 }, function(err, data) {
+    s3.list({ prefix: this.keyPrefix, maxKeys: 1 }, function(err, data) {
       if(err) {
         callback(err);
         return;
       }
+      // Check to see if this is the first access or not"
       callback(null, data.Contents.length === 0);
     });
   } catch(e) {
-    callback("Error: Unable to connect to S3. " + e);
+    callback("Error: Unable to connect to s3. " + e);
   }
 };
 

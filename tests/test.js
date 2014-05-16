@@ -1,12 +1,9 @@
 var expect = require('expect.js'),
     S3Provider = require(".."),
-    S3Options = { bucket: "<name>", key: "<S3_KEY>", secret: "<S3_SECRET>" },
-    guid = require("../util").guid;
-
-if(!S3Provider.isSupported) {
-  console.log("Skipping Filer.FileSystem.providers.S3 tests, since S3 isn't supported.");
-  return;
-}
+    S3Options = { bucket: "<bucket_name>", key: "<S3_KEY>", secret: "<S3_SECRET>" },
+    guid = require("../lib/utils").guid,
+    randomName,
+    randomKeyPrefix;
 
 describe("Filer.FileSystem.providers.S3", function() {
   it("is supported -- if it isn't, none of these tests can run.", function() {
@@ -24,24 +21,35 @@ describe("Filer.FileSystem.providers.S3", function() {
     var _provider;
 
     beforeEach(function() {
-      _provider = new S3Provider({name: guid(), keyPrefix: guid() });
+      randomName = guid();
+      randomKeyPrefix = guid();
+      _provider = new S3Provider({name: randomName, keyPrefix: randomKeyPrefix });
     });
 
     afterEach(function(done){
-      provider = _provider;
-      provider.open(S3Options, function(error, firstAccess) {
-        if (error) {
-          throw error;
-        }
-        var context = provider.getReadWriteContext();
-        context.clear(function(error) {
-        if (error) {
-          throw error;
-        }
-        expect(error).not.to.exist;
-        done();
+      var s3 = require("knox").createClient(S3Options);
+      var options = {
+        prefix: randomKeyPrefix
+      };
+      getAllObjects(options, []);
+
+      function getAllObjects(options, aggregate) {
+        s3.list(options, function (err, data) {
+          aggregate = aggregate.concat(data.Contents.map(function (content) {
+            return content.Key;
+          }));
+          if (data.IsTruncated) {
+            options.marker = data.Contents[data.Contents.length - 1].Key;
+            getAllObjects(options, aggregate);
+          }
+          s3.deleteMultiple(aggregate, function (err, res) {
+            if(res.statusCode === 403) {
+              return callback("Error 403: Permission deined." + err);
+            }
+            done();
+          });
         });
-      });
+      }
     });
 
     it("should open a new S3", function(done) {
@@ -67,6 +75,7 @@ describe("Filer.FileSystem.providers.S3", function() {
         if (error) {
           throw error;
         }
+        expect(firstAccess).to.be.true;
         var context = provider.getReadWriteContext();
         context.clear(function(error) {
         if (error) {
@@ -85,14 +94,16 @@ describe("Filer.FileSystem.providers.S3", function() {
         if(error) {
           throw error;
         }
+        expect(firstAccess).to.be.true;
         var context = provider.getReadWriteContext();
-        context.put("key", "data", function(error, result) {
+        context.put("key", data, function(error) {
           if(error) {
             throw error;
           }
           context.get("key", function(error, result) {
             expect(error).not.to.exist;
-            expect(result).to.equal("data");
+            expect(result).to.exist;
+            expect(result).to.eql(data);
             done();
           });
         });
@@ -105,13 +116,13 @@ describe("Filer.FileSystem.providers.S3", function() {
         if (error) {
           throw error;
         }
-
+        expect(firstAccess).to.be.true;
         var context = provider.getReadWriteContext();
-        context.put("key", "value", function(error, result) {
+        context.put("key", "value", function(error) {
           if (error) {
             throw error;
           }
-          context.delete("key", function(error, result) {
+          context.delete("key", function(error) {
             if (error) {
               throw error;
             }
@@ -134,16 +145,19 @@ describe("Filer.FileSystem.providers.S3", function() {
         if (error) {
           throw error;
         }
+        expect(firstAccess).to.be.true;
         var context = provider.getReadWriteContext();
-        context.put("key1", data1, function(error, result) {
+        context.put("key1", data1, function(error) {
           if (error) {
             throw error;
           }
-          context.put("key2", data2, function(error, result) {
+          expect(error).not.to.exist;
+          context.put("key2", data2, function(error) {
             if (error) {
               throw error;
             }
-            context.clear(function(err) {
+            expect(error).not.to.exist;
+            context.clear(function(error) {
               if (error) {
                 throw error;
               }
@@ -170,10 +184,10 @@ describe("Filer.FileSystem.providers.S3", function() {
         if (error) {
           throw error;
         }
+        expect(firstAccess).to.be.true;
         var context = provider.getReadOnlyContext();
-        context.put("key1", data1, function(error, result) {
+        context.put("key1", data1, function(error) {
           expect(error).to.exist;
-          expect(result).not.to.exist;
           done();
         });
       });

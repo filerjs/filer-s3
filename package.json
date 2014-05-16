@@ -16,7 +16,7 @@
     "provider",
     "amazon"
   ],
-  "author": "Someone",
+  "author": "Ali Al Dallal <ali@alicoding.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/alicoding/filer-s3/issues"

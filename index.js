@@ -31,7 +31,7 @@ S3Context.prototype.put = function (key, value, callback) {
     'application/type': 'application/json'
   };
 
-  function onError() {
+  function onError(res) {
     callback("Error " + res.statusCode);
   }
 
@@ -39,7 +39,7 @@ S3Context.prototype.put = function (key, value, callback) {
     .on("error", onError)
     .on("response", function (res) {
       if (res.statusCode !== 200) {
-        onError();
+        onError(res);
       }
       callback(null);
     })

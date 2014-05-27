@@ -31,15 +31,15 @@ S3Context.prototype.put = function (key, value, callback) {
     'application/type': 'application/json'
   };
 
-  function onError(res) {
-    callback("Error " + res.statusCode);
+  function onError() {
+    callback("Error: Unable to put key to S3");
   }
 
   s3.put(key, headers)
     .on("error", onError)
     .on("response", function (res) {
       if (res.statusCode !== 200) {
-        onError(res);
+        onError();
       }
       callback(null);
     })
@@ -79,7 +79,7 @@ S3Context.prototype.clear = function (callback) {
       }
       s3.deleteMultiple(aggregate, function (err, res) {
         if(res.statusCode === 403) {
-          return callback("Error 403: Permission deined." + err);
+          return callback("Error: 403. Permission denied");
         }
         return callback(null);
       });
@@ -91,8 +91,9 @@ S3Context.prototype.clear = function (callback) {
 S3Context.prototype.get = function (key, callback) {
   key = prefixKey(this.keyPrefix, key);
   s3.get(key).on('response', function (res) {
+    // If object is not found for this key then return null
     if (res.statusCode === 404) {
-      return callback("Error " + res.statusCode);
+      return callback(null, null);
     }
     var chunks = [];
     res.on('data', function (chunk) {
@@ -118,22 +119,25 @@ S3Context.prototype.get = function (key, callback) {
 function S3Provider(options) {
   this.name = options.name;
   this.keyPrefix = options.keyPrefix;
+  this.bucket = options.bucket;
+  this.key = options.key;
+  this.secret = options.secret;
 }
 
 S3Provider.isSupported = function() {
   return (typeof module !== 'undefined' && module.exports);
 };
 
-S3Provider.prototype.open = function(options, callback) {
+S3Provider.prototype.open = function(callback) {
   if(!this.keyPrefix) {
     callback("Error: Missing keyPrefix");
     return;
   }
   try {
     s3 = knox.createClient({
-      bucket: options.bucket,
-      key: options.key,
-      secret: options.secret
+      bucket: this.bucket,
+      key: this.key,
+      secret: this.secret
     });
     s3.list({ prefix: this.keyPrefix, maxKeys: 1 }, function(err, data) {
       if(err) {

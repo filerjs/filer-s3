@@ -1,6 +1,6 @@
-var util = require("./lib/utils");
-var knox = require("knox");
-var s3;
+var knox = require("knox"),
+    Buffer = require('filer').Buffer,
+    s3;
 
 function S3Context(options) {
   this.readOnly = options.isReadOnly;
@@ -16,12 +16,14 @@ S3Context.prototype.put = function (key, value, callback) {
     return callback("Error: Write operation on readOnly context.");
   }
   key = prefixKey(this.keyPrefix, key);
-  // We do extra work to make sure typed arrays survive
-  // being stored in S3 and still get the right prototype later.
-  if (Object.prototype.toString.call(value) === "[object Uint8Array]") {
+  // We do extra work to make sure typed buffer survive
+  // being stored on disk and still get the right prototype later.
+  if (Buffer.isBuffer(value)) {
+    var data = value.toJSON();
     value = {
-      __isUint8Array: true,
-      __array: util.u8toArray(value)
+      __isBuffer: true,
+      // Deal with difference between versions of node and .toJSON()
+      __data: data.data || data
     };
   }
   value = JSON.stringify(value);
@@ -103,9 +105,9 @@ S3Context.prototype.get = function (key, callback) {
       try {
         if(value) {
           value = JSON.parse(value);
-          // Deal with special-cased flattened typed arrays in WebSQL (see put() below)
-          if(value.__isUint8Array) {
-            value = new Uint8Array(value.__array);
+          // Deal with special-cased flattened typed buffer (see put() below)
+          if(value.__isBuffer) {
+            value = new Buffer(value.__data);
           }
         }
         callback(null, value);

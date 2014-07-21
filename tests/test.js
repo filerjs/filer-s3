@@ -1,6 +1,7 @@
 var expect = require('expect.js'),
+    Buffer = require('filer').Buffer,
     S3Provider = require(".."),
-    S3Options = { bucket: "<bucket_name>", key: "<S3_KEY>", secret: "<S3_SECRET>" },
+    S3Options = { bucket: process.env.S3_BUCKET, key: process.env.S3_KEY, secret: process.env.S3_SECRET },
     guid = require("../lib/utils").guid,
     randomName,
     randomKeyPrefix;
@@ -11,7 +12,7 @@ describe("Filer.FileSystem.providers.S3", function() {
   });
 
   it("has open, getReadOnlyContext, and getReadWriteContext instance methods", function() {
-    var S3 = new S3Provider({bucket: "<bucket_name>", key: "<S3_KEY>", secret: "<S3_SECRET>", name: guid(), keyPrefix: guid()});
+    var S3 = new S3Provider({bucket: process.env.S3_BUCKET, key: process.env.S3_KEY, secret: process.env.S3_SECRET, name: guid(), keyPrefix: guid()});
     expect(S3.open).to.be.a('function');
     expect(S3.getReadOnlyContext).to.be.a('function');
     expect(S3.getReadWriteContext).to.be.a('function');
@@ -23,7 +24,7 @@ describe("Filer.FileSystem.providers.S3", function() {
     beforeEach(function() {
       randomName = guid();
       randomKeyPrefix = guid();
-      _provider = new S3Provider({bucket: "<bucket_name>", key: "<S3_KEY>", secret: "<S3_SECRET>", name: randomName, keyPrefix: randomKeyPrefix });
+      _provider = new S3Provider({bucket: process.env.S3_BUCKET, key: process.env.S3_KEY, secret: process.env.S3_SECRET, name: randomName, keyPrefix: randomKeyPrefix });
     });
 
     afterEach(function(done){
@@ -43,9 +44,7 @@ describe("Filer.FileSystem.providers.S3", function() {
             getAllObjects(options, aggregate);
           }
           s3.deleteMultiple(aggregate, function (err, res) {
-            if(res.statusCode === 403) {
-              return callback("Error 403: Permission deined." + err);
-            }
+            expect(res.statusCode, "Error 403: Permission deined.").to.not.equal(403);
             done();
           });
         });
@@ -66,7 +65,7 @@ describe("Filer.FileSystem.providers.S3", function() {
     var _provider;
 
     beforeEach(function() {
-      _provider = new S3Provider({bucket: "<bucket_name>", key: "<S3_KEY>", secret: "<S3_SECRET>", name: randomName, keyPrefix: randomKeyPrefix });
+      _provider = new S3Provider({bucket: process.env.S3_BUCKET, key: process.env.S3_KEY, secret: process.env.S3_SECRET, name: randomName, keyPrefix: randomKeyPrefix });
     });
 
     afterEach(function(done){
@@ -88,7 +87,7 @@ describe("Filer.FileSystem.providers.S3", function() {
     });
 
     it("should allow put() and get()", function(done) {
-      var data = new Uint8Array([5, 2, 5]);
+      var data = new Buffer([5, 2, 5]);
       var provider = _provider;
       provider.open(function(error, firstAccess) {
         if(error) {
@@ -137,8 +136,8 @@ describe("Filer.FileSystem.providers.S3", function() {
     });
 
     it("should allow clear()", function(done) {
-      var data1 = new Uint8Array([5, 2, 5]);
-      var data2 = new Uint8Array([10, 20, 50]);
+      var data1 = new Buffer([5, 2, 5]);
+      var data2 = new Buffer([10, 20, 50]);
 
       var provider = _provider;
       provider.open(function(error, firstAccess) {
@@ -178,7 +177,7 @@ describe("Filer.FileSystem.providers.S3", function() {
     });
 
     it("should fail when trying to write on ReadOnlyContext", function(done) {
-      var data1 = new Uint8Array([5, 2, 5]);
+      var data1 = new Buffer([5, 2, 5]);
       var provider = _provider;
       provider.open(function(error, firstAccess) {
         if (error) {

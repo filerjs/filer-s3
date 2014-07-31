@@ -13,7 +13,7 @@ function prefixKey(prefix, key) {
 
 S3Context.prototype.put = function (key, value, callback) {
   if(this.readOnly) {
-    return callback("Error: Write operation on readOnly context.");
+    return callback(new Error("Write operation on readOnly context."));
   }
   key = prefixKey(this.keyPrefix, key);
   // We do extra work to make sure typed buffer survive
@@ -28,13 +28,12 @@ S3Context.prototype.put = function (key, value, callback) {
   }
   value = JSON.stringify(value);
   var headers = {
-    'x-amz-acl': 'public-read',
     'Content-Length': Buffer.byteLength(value),
     'application/type': 'application/json'
   };
 
   function onError() {
-    callback("Error: Unable to put key to S3");
+    callback(new Error("Unable to put key to S3"));
   }
 
   s3.put(key, headers)
@@ -50,12 +49,12 @@ S3Context.prototype.put = function (key, value, callback) {
 
 S3Context.prototype.delete = function (key, callback) {
   if(this.readOnly) {
-    return callback("Error: Write operation on readOnly context.");
+    return callback(new Error("Write operation on readOnly context."));
   }
   key = prefixKey(this.keyPrefix, key);
   s3.del(key).on('response', function (res) {
     if(res.statusCode === 403) {
-      return callback("Error: 403. Permission denied");
+      return callback(new Error("403. Permission denied"));
     }
     callback(null);
   }).end();
@@ -63,7 +62,7 @@ S3Context.prototype.delete = function (key, callback) {
 
 S3Context.prototype.clear = function (callback) {
   if(this.readOnly) {
-    return callback("Error: Write operation on readOnly context.");
+    return callback(new Error("Write operation on readOnly context."));
   }
   var options = {
     prefix: this.keyPrefix
@@ -81,7 +80,7 @@ S3Context.prototype.clear = function (callback) {
       }
       s3.deleteMultiple(aggregate, function (err, res) {
         if(res.statusCode === 403) {
-          return callback("Error: 403. Permission denied");
+          return callback(new Error("403. Permission denied"));
         }
         return callback(null);
       });
@@ -132,7 +131,7 @@ S3Provider.isSupported = function() {
 
 S3Provider.prototype.open = function(callback) {
   if(!this.keyPrefix) {
-    callback("Error: Missing keyPrefix");
+    callback(new Error("Missing keyPrefix"));
     return;
   }
   try {
@@ -150,7 +149,7 @@ S3Provider.prototype.open = function(callback) {
       callback(null, data.Contents.length === 0);
     });
   } catch(e) {
-    callback("Error: Unable to connect to s3. " + e);
+    callback(new Error("Unable to connect to s3. " + e));
   }
 };
 

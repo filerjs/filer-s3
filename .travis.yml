@@ -6,5 +6,4 @@ before_script:
 env:
   global:
   - S3_KEY="AKIAIVX3QG6GGNREGYMA" S3_BUCKET="app-travis-filer-s3"
-  - secure: E5NVpqYjfJXGvOiyl696NqTTI1fNRiSo29SnYCjbcLkFVeF9VSz2G0pRaysC2Akb17aRLbjsY0RrlkXAFtvVd+UVwd7YKR4kMPBusRKuwAYFpHrIRLi9PsKxX/TQ3eXCD5Ln31+oh8IcxRW1yGqdmvPA4qX1cVgBGDBSiNV2YRk=
-  - secure: adMR/DuXsr4cF5Jo81e35Bcrwoo/lHpnIOC4aiSZq8h6s33sljBpxAYBh1nVM1Xh/YjzqnchTBz7gMHFS+qs3G25CugWCOE9B3ImzxHKnpOe+pfqygOjwWTh1PJpi4mDjAP5vxW1sGxg+X1wE9S3dO2eraja/CnT+yAE4xA3kHI=
+  - secure: LrGedROKtVMYlHoXdsrsLFr1W4eES7VXhih6Ze6tq6D9VpPqqaPt17iSSIKIdhh6BN8LA89AGKQxIA63GX7aAp1J0Mz8VMNxlSj4tjQ8UcsJpunw/yDb77ocFlfER1spepnFDMIEz9QcfU9M8jSG8GxTtD2yeMrw2vSxSXv69mY=

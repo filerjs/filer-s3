@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/alicoding/filer-s3.git"
+    "url": "git://github.com/mozilla/filer-s3.git"
   },
   "keywords": [
     "filder",
@@ -19,21 +19,18 @@
   "author": "Ali Al Dallal <ali@alicoding.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/alicoding/filer-s3/issues"
+    "url": "https://github.com/mozilla/filer-s3/issues"
   },
-  "homepage": "https://github.com/alicoding/filer-s3",
+  "homepage": "https://github.com/mozilla/filer-s3",
   "devDependencies": {
     "grunt": "~0.4.4",
     "grunt-contrib-jshint": "~0.10.0",
     "grunt-mocha-test": "~0.10.2",
-    "grunt-jslint": "~1.1.8",
-    "should": "~3.3.1",
-    "noxmox": "~0.2.4"
+    "grunt-jslint": "~1.1.8"
   },
   "dependencies": {
     "async": "~0.8.0",
-    "expect.js": "~0.3.1",
-    "filer": "0.0.19",
-    "knox": "~0.8.10"
+    "aws-sdk": "^2.0.14",
+    "expect.js": "~0.3.1"
   }
 }

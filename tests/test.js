@@ -1,7 +1,5 @@
 var expect = require('expect.js'),
-    Buffer = require('filer').Buffer,
     S3Provider = require(".."),
-    S3Options = { bucket: process.env.S3_BUCKET, key: process.env.S3_KEY, secret: process.env.S3_SECRET },
     guid = require("../lib/utils").guid,
     randomName,
     randomKeyPrefix;
@@ -28,23 +26,39 @@ describe("Filer.FileSystem.providers.S3", function() {
     });
 
     afterEach(function(done){
-      var s3 = require("knox").createClient(S3Options);
+      var AWS = require('aws-sdk'),
+      s3 = new AWS.S3({params: {Bucket: process.env.S3_BUCKET}});
+      AWS.config.update({
+        accessKeyId: process.env.S3_KEY,
+        secretAccessKey: process.env.S3_SECRET
+      });
       var options = {
-        prefix: randomKeyPrefix
+        Prefix: randomKeyPrefix
       };
       getAllObjects(options, []);
 
       function getAllObjects(options, aggregate) {
-        s3.list(options, function (err, data) {
+        s3.listObjects(options, function (err, data) {
+          expect(err, "[Error on listObjects]").to.not.exist;
+          if(data.Contents.length === 0) {
+            done();
+            return;
+          }
           aggregate = aggregate.concat(data.Contents.map(function (content) {
-            return content.Key;
+            return { Key: content.Key };
           }));
           if (data.IsTruncated) {
-            options.marker = data.Contents[data.Contents.length - 1].Key;
+            options.Marker = data.Contents[data.Contents.length - 1].Key;
             getAllObjects(options, aggregate);
           }
-          s3.deleteMultiple(aggregate, function (err, res) {
-            expect(res.statusCode, "Error 403: Permission deined.").to.not.equal(403);
+          var params = {
+            Delete: {
+              Objects: aggregate
+            }
+          };
+
+          s3.deleteObjects(params, function (err) {
+            expect(err, "[Error on deleteObjects]").to.not.exist;
             done();
           });
         });
@@ -95,11 +109,11 @@ describe("Filer.FileSystem.providers.S3", function() {
         }
         expect(firstAccess).to.be.true;
         var context = provider.getReadWriteContext();
-        context.put("key", data, function(error) {
+        context.putBuffer("key", data, function(error) {
           if(error) {
             throw error;
           }
-          context.get("key", function(error, result) {
+          context.getBuffer("key", function(error, result) {
             expect(error).not.to.exist;
             expect(result).to.exist;
             expect(result).to.eql(data);
@@ -117,7 +131,7 @@ describe("Filer.FileSystem.providers.S3", function() {
         }
         expect(firstAccess).to.be.true;
         var context = provider.getReadWriteContext();
-        context.put("key", "value", function(error) {
+        context.putObject("key", "value", function(error) {
           if (error) {
             throw error;
           }
@@ -125,7 +139,7 @@ describe("Filer.FileSystem.providers.S3", function() {
             if (error) {
               throw error;
             }
-            context.get("key", function(error, result) {
+            context.getObject("key", function(error, result) {
               expect(error).not.to.exist;
               expect(result).not.to.exist;
               done();
@@ -146,12 +160,12 @@ describe("Filer.FileSystem.providers.S3", function() {
         }
         expect(firstAccess).to.be.true;
         var context = provider.getReadWriteContext();
-        context.put("key1", data1, function(error) {
+        context.putBuffer("key1", data1, function(error) {
           if (error) {
             throw error;
           }
           expect(error).not.to.exist;
-          context.put("key2", data2, function(error) {
+          context.putBuffer("key2", data2, function(error) {
             if (error) {
               throw error;
             }
@@ -160,11 +174,11 @@ describe("Filer.FileSystem.providers.S3", function() {
               if (error) {
                 throw error;
               }
-              context.get("key1", function(error, result) {
+              context.getBuffer("key1", function(error, result) {
                expect(error).to.exist;
                 expect(result).not.to.exist;
 
-                context.get("key2", function(error, result) {
+                context.getBuffer("key2", function(error, result) {
                   expect(error).to.exist;
                   expect(result).not.to.exist;
                   done();
@@ -185,7 +199,7 @@ describe("Filer.FileSystem.providers.S3", function() {
         }
         expect(firstAccess).to.be.true;
         var context = provider.getReadOnlyContext();
-        context.put("key1", data1, function(error) {
+        context.putBuffer("key1", data1, function(error) {
           expect(error).to.exist;
           done();
         });

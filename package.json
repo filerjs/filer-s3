@@ -1,6 +1,6 @@
 {
   "name": "filer-s3",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "filer-s3 provider",
   "main": "index.js",
   "scripts": {
